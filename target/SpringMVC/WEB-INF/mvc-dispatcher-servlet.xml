@@ -1,0 +1,73 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:amq="http://activemq.apache.org/schema/core"
+       xmlns:jms="http://www.springframework.org/schema/jms"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://activemq.apache.org/schema/core
+       http://activemq.apache.org/schema/core/activemq-core-5.5.0.xsd
+       http://www.springframework.org/schema/jms
+       http://www.springframework.org/schema/jms/spring-jms.xsd">
+
+    <bean class="org.springframework.web.servlet.mvc.support.ControllerClassNameHandlerMapping"/>
+
+    <bean id="multipartResolver"
+          class="org.springframework.web.multipart.commons.CommonsMultipartResolver"/>
+
+    <bean class="com.upload.common.controller.FileUploadController">
+        <property name="sender" ref="queueProducer"/>
+        <property name="formView" value="FileUploadForm"/>
+        <property name="successView" value="FileUploadSuccess"/>
+
+        <!-- Map a validator -->
+        <property name="validator">
+            <bean class="com.upload.common.validator.FileUploadValidator"/>
+        </property>
+    </bean>
+
+    <!-- Register the Customer.properties -->
+    <bean id="messageSource"
+          class="org.springframework.context.support.ResourceBundleMessageSource">
+        <property name="basename" value="message"/>
+    </bean>
+
+    <bean id="viewResolver"
+          class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix">
+            <value>/WEB-INF/pages/</value>
+        </property>
+        <property name="suffix">
+            <value>.jsp</value>
+        </property>
+    </bean>
+
+    <amq:broker useJmx="false" persistent="false">
+        <amq:transportConnectors>
+            <amq:transportConnector uri="tcp://localhost:0"/>
+        </amq:transportConnectors>
+    </amq:broker>
+
+    <amq:connectionFactory id="amqConnectionFactory" brokerURL="vm://localhost"/>
+    <bean class="org.springframework.jms.connection.CachingConnectionFactory" id="connectionFactory">
+        <constructor-arg ref="amqConnectionFactory"/>
+        <property name="sessionCacheSize" value="100"/>
+    </bean>
+
+    <amq:queue id="testQ" physicalName="testQueue"/>
+
+    <bean class="org.springframework.jms.core.JmsTemplate" id="jmsTemplate">
+        <constructor-arg ref="connectionFactory"/>
+    </bean>
+
+    <bean class="com.upload.common.messaging.Sender" id="queueProducer">
+        <property name="jmsTemplate" ref="jmsTemplate"/>
+        <property name="queueName" ref="testQ"/>
+    </bean>
+
+    <bean class="com.upload.common.messaging.Listener" id="queueListener"/>
+
+    <jms:listener-container concurrency="10" connection-factory="connectionFactory">
+        <jms:listener destination="testQueue" ref="queueListener"/>
+    </jms:listener-container>
+
+</beans>
