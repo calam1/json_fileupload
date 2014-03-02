@@ -41,6 +41,16 @@
         </property>
     </bean>
 
+    <!-- executor service -->
+    <bean id="executorService" class="java.util.concurrent.Executors"
+          factory-method="newFixedThreadPool" destroy-method="shutdown">
+        <constructor-arg value="10" />
+    </bean>
+
+    <!-- database stuff -->
+    <bean id="productDAO" class="com.upload.common.database.ProductDAO"/>
+
+    <!-- activemq/jms -->
     <amq:broker useJmx="false" persistent="false">
         <amq:transportConnectors>
             <amq:transportConnector uri="tcp://localhost:0"/>
@@ -64,10 +74,15 @@
         <property name="queueName" ref="testQ"/>
     </bean>
 
-    <bean class="com.upload.common.messaging.Listener" id="queueListener"/>
+    <bean class="com.upload.common.messaging.Listener" id="queueListener">
+        <property name="productDAO" ref="productDAO"/>
+        <property name="executorService" ref="executorService"/>
+    </bean>
 
     <jms:listener-container concurrency="10" connection-factory="connectionFactory">
         <jms:listener destination="testQueue" ref="queueListener"/>
     </jms:listener-container>
+
+
 
 </beans>
